@@ -109,9 +109,13 @@ fn setup_system(
 
     for y in 0..z_vertex_count {
         for x in 0..x_vertex_count {
+            // Get coordinates for a plane. if it's 10x9 - it scales to 1x1
             let tx = x as f32 / (x_vertex_count - 1) as f32;
             let ty = y as f32 / (z_vertex_count - 1) as f32;
-            positions.push([(-0.5 + tx) * mesh_size, 0.0, (-0.5 + ty) * mesh_size]);
+            // Scale the mesh up using the size
+            let x = (-0.5 + tx) * mesh_size;
+            let y = (-0.5 + ty) * mesh_size;
+            positions.push([x, 0.0, y]);
             normals.push(up);
             uvs.push([tx, 1.0 - ty]);
         }
