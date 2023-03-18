@@ -1,4 +1,8 @@
-use bevy::{prelude::*, render::camera::Projection, window::PrimaryWindow};
+use bevy::{
+    prelude::*,
+    render::{camera::Projection, mesh::Indices},
+    window::PrimaryWindow,
+};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 
 #[derive(Default, Resource)]
@@ -34,6 +38,7 @@ fn ui_example_system(
     occupied_screen_space.left = egui::SidePanel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
+            ui.heading("Left Panel");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -42,6 +47,7 @@ fn ui_example_system(
     occupied_screen_space.right = egui::SidePanel::right("right_panel")
         .resizable(true)
         .show(ctx, |ui| {
+            ui.heading("Right Panel");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -50,6 +56,7 @@ fn ui_example_system(
     occupied_screen_space.top = egui::TopBottomPanel::top("top_panel")
         .resizable(true)
         .show(ctx, |ui| {
+            ui.heading("Top Panel");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -58,6 +65,7 @@ fn ui_example_system(
     occupied_screen_space.bottom = egui::TopBottomPanel::bottom("bottom_panel")
         .resizable(true)
         .show(ctx, |ui| {
+            ui.heading("Bottom Panel");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -70,14 +78,70 @@ fn setup_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(Mesh::from(shape::Plane {
+    //         size: 5.0,
+    //         subdivisions: 0,
+    //     })),
+    //     material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+    //     ..Default::default()
+    // });
+
+    // Test mutating mesh
+
+    let mut test_mesh = Mesh::from(shape::Plane {
+        size: 5.0,
+        subdivisions: 0,
+    });
+
+    let z_vertex_count = 2;
+    let x_vertex_count = 2;
+    let num_vertices = (z_vertex_count * x_vertex_count) as usize;
+    let num_indices = ((z_vertex_count - 1) * (x_vertex_count - 1) * 6) as usize;
+    let up = Vec3::Y.to_array();
+    // We resize mesh to 8 (instead of 5 like above)
+    let mesh_size = 8.0;
+
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(num_vertices);
+    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(num_vertices);
+    let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(num_vertices);
+    let mut indices: Vec<u32> = Vec::with_capacity(num_indices);
+
+    for y in 0..z_vertex_count {
+        for x in 0..x_vertex_count {
+            let tx = x as f32 / (x_vertex_count - 1) as f32;
+            let ty = y as f32 / (z_vertex_count - 1) as f32;
+            positions.push([(-0.5 + tx) * mesh_size, 0.0, (-0.5 + ty) * mesh_size]);
+            normals.push(up);
+            uvs.push([tx, 1.0 - ty]);
+        }
+    }
+
+    for y in 0..z_vertex_count - 1 {
+        for x in 0..x_vertex_count - 1 {
+            let quad = y * x_vertex_count + x;
+            indices.push(quad + x_vertex_count + 1);
+            indices.push(quad + 1);
+            indices.push(quad + x_vertex_count);
+            indices.push(quad);
+            indices.push(quad + x_vertex_count);
+            indices.push(quad + 1);
+        }
+    }
+    // let mut test_mesh = Mesh::new(PrimitiveTopology::TriangleList);
+    test_mesh.set_indices(Some(Indices::U32(indices)));
+    test_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    test_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    test_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane {
-            size: 5.0,
-            subdivisions: 0,
-        })),
+        mesh: meshes.add(test_mesh),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         ..Default::default()
     });
+
+    // Demo code
+
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
         material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
