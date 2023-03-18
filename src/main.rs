@@ -94,8 +94,9 @@ fn setup_system(
         subdivisions: 0,
     });
 
-    let z_vertex_count = 2;
-    let x_vertex_count = 2;
+    let subdivisions = 10;
+    let z_vertex_count = subdivisions + 2;
+    let x_vertex_count = subdivisions + 2;
     let num_vertices = (z_vertex_count * x_vertex_count) as usize;
     let num_indices = ((z_vertex_count - 1) * (x_vertex_count - 1) * 6) as usize;
     let up = Vec3::Y.to_array();
@@ -113,9 +114,15 @@ fn setup_system(
             let tx = x as f32 / (x_vertex_count - 1) as f32;
             let ty = y as f32 / (z_vertex_count - 1) as f32;
             // Scale the mesh up using the size
+            // let x = (-0.5 + tx) * mesh_size + x_offset;
+            // let y = (-0.5 + ty) * mesh_size + y_offset;
             let x = (-0.5 + tx) * mesh_size;
             let y = (-0.5 + ty) * mesh_size;
-            positions.push([x, 0.0, y]);
+            let x_offset = x.sin();
+            let y_offset = y.cos();
+            // let x = ((-0.5 + tx) * mesh_size).sin();
+            // let y = ((-0.5 + ty) * mesh_size).sin();
+            positions.push([x, x_offset, y]);
             normals.push(up);
             uvs.push([tx, 1.0 - ty]);
         }
