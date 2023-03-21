@@ -23,6 +23,8 @@ struct OriginalCameraTransform(Transform);
 struct AnimationState {
     speed: f32,
     paused: bool,
+    elapsed_time: f32,
+    elapsed_time_update: bool,
 }
 
 impl Default for AnimationState {
@@ -30,6 +32,8 @@ impl Default for AnimationState {
         AnimationState {
             speed: 1.0,
             paused: false,
+            elapsed_time: 0.0,
+            elapsed_time_update: false,
         }
     }
 }
@@ -112,16 +116,14 @@ fn ui_example_system(
 
                 // Display elapsed time from top level component
                 // @TODO: System for multiple animation clips (prob nested like After Effects)
-                ui.horizontal(|ui| {
-                    ui.label("Elapsed Time:");
-                    ui.strong(
-                        animation_players
-                            .get_single()
-                            .unwrap()
-                            .elapsed()
-                            .to_string(),
-                    );
-                });
+                // Elapsed time input (click for exact or drag)
+                if ui
+                    .add(egui::DragValue::new(&mut animation_state.elapsed_time).speed(0.1))
+                    .changed()
+                {
+                    // We use a dirty flag to update the state in another system to keep UI clean
+                    animation_state.elapsed_time_update = true;
+                };
             });
 
             // Background (with hover)
@@ -321,7 +323,7 @@ fn update_camera_transform_system(
 }
 
 fn update_animation_speed(
-    animation_state: Res<AnimationState>,
+    mut animation_state: ResMut<AnimationState>,
     mut players: Query<&mut AnimationPlayer, With<Name>>,
 ) {
     // Loop through any animation players
@@ -337,6 +339,15 @@ fn update_animation_speed(
                 true => player.pause(),
                 false => player.resume(),
             };
+        }
+
+        // Update elapsed time
+        if animation_state.elapsed_time_update {
+            player.set_elapsed(animation_state.elapsed_time);
+            animation_state.elapsed_time_update = false;
+        } else {
+            // Sync the animation's elapsed time with the slider
+            animation_state.elapsed_time = player.elapsed();
         }
     }
 }
