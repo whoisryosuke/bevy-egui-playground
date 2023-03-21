@@ -47,13 +47,14 @@ fn ui_example_system(
     mut contexts: EguiContexts,
     mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
     mut animation_state: ResMut<AnimationState>,
+    animation_players: Query<&mut AnimationPlayer, With<Name>>,
 ) {
     let ctx = contexts.ctx_mut();
 
     occupied_screen_space.left = egui::SidePanel::left("left_panel")
         .resizable(true)
         .show(ctx, |ui| {
-            ui.heading("Left Panel");
+            ui.heading("Animation Clips");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -62,7 +63,7 @@ fn ui_example_system(
     occupied_screen_space.right = egui::SidePanel::right("right_panel")
         .resizable(true)
         .show(ctx, |ui| {
-            ui.heading("Right Panel");
+            ui.heading("Properties");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -71,7 +72,7 @@ fn ui_example_system(
     occupied_screen_space.top = egui::TopBottomPanel::top("top_panel")
         .resizable(true)
         .show(ctx, |ui| {
-            ui.heading("Top Panel");
+            // ui.heading("Top Panel");
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -82,15 +83,31 @@ fn ui_example_system(
         .show(ctx, |ui| {
             ui.heading("Animation Timeline");
 
-            // Speed buttons
+            // Top UI
             ui.horizontal(|ui| {
-                if ui.button("-").clicked() {
-                    animation_state.speed -= 0.1;
-                }
-                ui.strong("Speed");
-                if ui.button("+").clicked() {
-                    animation_state.speed += 0.1;
-                }
+                // Speed buttons
+                ui.horizontal(|ui| {
+                    if ui.button("-").clicked() {
+                        animation_state.speed -= 0.1;
+                    }
+                    ui.strong("Speed");
+                    if ui.button("+").clicked() {
+                        animation_state.speed += 0.1;
+                    }
+                });
+
+                // Display elapsed time from top level component
+                // @TODO: System for multiple animation clips (prob nested like After Effects)
+                ui.horizontal(|ui| {
+                    ui.label("Elapsed Time:");
+                    ui.strong(
+                        animation_players
+                            .get_single()
+                            .unwrap()
+                            .elapsed()
+                            .to_string(),
+                    );
+                });
             });
 
             // Background (with hover)
