@@ -4,6 +4,7 @@ use bevy::{
     window::PrimaryWindow,
 };
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use std::f32::consts::PI;
 
 #[derive(Default, Resource)]
 struct OccupiedScreenSpace {
@@ -18,20 +19,34 @@ const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 #[derive(Resource, Deref, DerefMut)]
 struct OriginalCameraTransform(Transform);
 
+#[derive(Resource)]
+struct AnimationState {
+    speed: f32,
+}
+
+impl Default for AnimationState {
+    fn default() -> Self {
+        AnimationState { speed: 1.0 }
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .init_resource::<OccupiedScreenSpace>()
+        .init_resource::<AnimationState>()
         .add_startup_system(setup_system)
         .add_system(ui_example_system)
         .add_system(update_camera_transform_system)
+        .add_system(update_animation_speed)
         .run();
 }
 
 fn ui_example_system(
     mut contexts: EguiContexts,
     mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
+    mut animation_state: ResMut<AnimationState>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -65,7 +80,20 @@ fn ui_example_system(
     occupied_screen_space.bottom = egui::TopBottomPanel::bottom("bottom_panel")
         .resizable(true)
         .show(ctx, |ui| {
-            ui.heading("Bottom Panel");
+            ui.heading("Animation Timeline");
+
+            // Speed buttons
+            ui.horizontal(|ui| {
+                if ui.button("-").clicked() {
+                    animation_state.speed -= 0.1;
+                }
+                ui.strong("Speed");
+                if ui.button("+").clicked() {
+                    animation_state.speed += 0.1;
+                }
+            });
+
+            // Background (with hover)
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
@@ -77,22 +105,138 @@ fn setup_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut animations: ResMut<Assets<AnimationClip>>,
 ) {
+    // Animation
+
+    // The animation API uses the `Name` component to target entities
+    let planet = Name::new("planet");
+    let orbit_controller = Name::new("orbit_controller");
+    let satellite = Name::new("satellite");
+
+    // Creating the animation
+    let mut animation = AnimationClip::default();
+    // A curve can modify a single part of a transform, here the translation
+    animation.add_curve_to_path(
+        EntityPath {
+            parts: vec![planet.clone()],
+        },
+        VariableCurve {
+            keyframe_timestamps: vec![0.0, 1.0, 2.0, 3.0, 4.0],
+            keyframes: Keyframes::Translation(vec![
+                Vec3::new(1.0, 0.0, 1.0),
+                Vec3::new(-1.0, 0.0, 1.0),
+                Vec3::new(-1.0, 0.0, -1.0),
+                Vec3::new(1.0, 0.0, -1.0),
+                // in case seamless looping is wanted, the last keyframe should
+                // be the same as the first one
+                Vec3::new(1.0, 0.0, 1.0),
+            ]),
+        },
+    );
+    // Or it can modify the rotation of the transform.
+    // To find the entity to modify, the hierarchy will be traversed looking for
+    // an entity with the right name at each level
+    animation.add_curve_to_path(
+        EntityPath {
+            parts: vec![planet.clone(), orbit_controller.clone()],
+        },
+        VariableCurve {
+            keyframe_timestamps: vec![0.0, 1.0, 2.0, 3.0, 4.0],
+            keyframes: Keyframes::Rotation(vec![
+                Quat::IDENTITY,
+                Quat::from_axis_angle(Vec3::Y, PI / 2.),
+                Quat::from_axis_angle(Vec3::Y, PI / 2. * 2.),
+                Quat::from_axis_angle(Vec3::Y, PI / 2. * 3.),
+                Quat::IDENTITY,
+            ]),
+        },
+    );
+    // If a curve in an animation is shorter than the other, it will not repeat
+    // until all other curves are finished. In that case, another animation should
+    // be created for each part that would have a different duration / period
+    animation.add_curve_to_path(
+        EntityPath {
+            parts: vec![planet.clone(), orbit_controller.clone(), satellite.clone()],
+        },
+        VariableCurve {
+            keyframe_timestamps: vec![0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0],
+            keyframes: Keyframes::Scale(vec![
+                Vec3::splat(0.8),
+                Vec3::splat(1.2),
+                Vec3::splat(0.8),
+                Vec3::splat(1.2),
+                Vec3::splat(0.8),
+                Vec3::splat(1.2),
+                Vec3::splat(0.8),
+                Vec3::splat(1.2),
+                Vec3::splat(0.8),
+            ]),
+        },
+    );
+    // There can be more than one curve targeting the same entity path
+    animation.add_curve_to_path(
+        EntityPath {
+            parts: vec![planet.clone(), orbit_controller.clone(), satellite.clone()],
+        },
+        VariableCurve {
+            keyframe_timestamps: vec![0.0, 1.0, 2.0, 3.0, 4.0],
+            keyframes: Keyframes::Rotation(vec![
+                Quat::IDENTITY,
+                Quat::from_axis_angle(Vec3::Y, PI / 2.),
+                Quat::from_axis_angle(Vec3::Y, PI / 2. * 2.),
+                Quat::from_axis_angle(Vec3::Y, PI / 2. * 3.),
+                Quat::IDENTITY,
+            ]),
+        },
+    );
+
+    // Create the animation player, and set it to repeat
+    let mut player = AnimationPlayer::default();
+    player.play(animations.add(animation)).repeat();
+
+    // Create the scene that will be animated
+    // First entity is the planet
+    commands
+        .spawn((
+            PbrBundle {
+                mesh: meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap()),
+                material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+                ..default()
+            },
+            // Add the Name component, and the animation player
+            planet,
+            player,
+        ))
+        .with_children(|p| {
+            // This entity is just used for animation, but doesn't display anything
+            p.spawn((
+                SpatialBundle::INHERITED_IDENTITY,
+                // Add the Name component
+                orbit_controller,
+            ))
+            .with_children(|p| {
+                // The satellite, placed at a distance of the planet
+                p.spawn((
+                    PbrBundle {
+                        transform: Transform::from_xyz(1.5, 0.0, 0.0),
+                        mesh: meshes.add(Mesh::from(shape::Cube { size: 0.5 })),
+                        material: materials.add(Color::rgb(0.3, 0.9, 0.3).into()),
+                        ..default()
+                    },
+                    // Add the Name component
+                    satellite,
+                ));
+            });
+        });
+
+    // Demo code
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane {
             size: 5.0,
             subdivisions: 0,
         })),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
-        ..Default::default()
-    });
-
-    // Demo code
-
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..Default::default()
     });
     commands.spawn(PointLightBundle {
@@ -143,4 +287,17 @@ fn update_camera_transform_system(
             (top_taken - bottom_taken) * frustum_height * 0.5,
             0.0,
         ));
+}
+
+fn update_animation_speed(
+    animation_state: Res<AnimationState>,
+    mut players: Query<&mut AnimationPlayer, With<Name>>,
+) {
+    // Loop through any animation players
+    for mut player in players.iter_mut() {
+        // If speed is different, update it
+        if player.speed() != animation_state.speed {
+            player.set_speed(animation_state.speed);
+        }
+    }
 }
