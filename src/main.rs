@@ -22,11 +22,15 @@ struct OriginalCameraTransform(Transform);
 #[derive(Resource)]
 struct AnimationState {
     speed: f32,
+    paused: bool,
 }
 
 impl Default for AnimationState {
     fn default() -> Self {
-        AnimationState { speed: 1.0 }
+        AnimationState {
+            speed: 1.0,
+            paused: false,
+        }
     }
 }
 
@@ -85,6 +89,16 @@ fn ui_example_system(
 
             // Top UI
             ui.horizontal(|ui| {
+                // Play/Pause button
+                let play_btn_label = if animation_state.paused {
+                    "Play".to_string()
+                } else {
+                    "Pause".to_string()
+                };
+                if ui.button(play_btn_label).clicked() {
+                    animation_state.paused = !animation_state.paused;
+                }
+
                 // Speed buttons
                 ui.horizontal(|ui| {
                     if ui.button("-").clicked() {
@@ -315,6 +329,14 @@ fn update_animation_speed(
         // If speed is different, update it
         if player.speed() != animation_state.speed {
             player.set_speed(animation_state.speed);
+        }
+
+        // Pause animation if changed
+        if player.is_paused() != animation_state.paused {
+            match animation_state.paused {
+                true => player.pause(),
+                false => player.resume(),
+            };
         }
     }
 }
