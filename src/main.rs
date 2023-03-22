@@ -91,39 +91,52 @@ fn ui_example_system(
         .show(ctx, |ui| {
             ui.heading("Animation Timeline");
 
-            // Top UI
-            ui.horizontal(|ui| {
-                // Play/Pause button
-                let play_btn_label = if animation_state.paused {
-                    "Play".to_string()
-                } else {
-                    "Pause".to_string()
-                };
-                if ui.button(play_btn_label).clicked() {
-                    animation_state.paused = !animation_state.paused;
-                }
-
-                // Speed buttons
+            ui.vertical(|ui| {
+                // Top UI
                 ui.horizontal(|ui| {
-                    if ui.button("-").clicked() {
-                        animation_state.speed -= 0.1;
+                    // Play/Pause button
+                    let play_btn_label = if animation_state.paused {
+                        "Play".to_string()
+                    } else {
+                        "Pause".to_string()
+                    };
+                    if ui.button(play_btn_label).clicked() {
+                        animation_state.paused = !animation_state.paused;
                     }
-                    ui.strong("Speed");
-                    if ui.button("+").clicked() {
-                        animation_state.speed += 0.1;
-                    }
+
+                    // Speed buttons
+                    ui.horizontal(|ui| {
+                        if ui.button("-").clicked() {
+                            animation_state.speed -= 0.1;
+                        }
+                        ui.strong("Speed");
+                        if ui.button("+").clicked() {
+                            animation_state.speed += 0.1;
+                        }
+                    });
+
+                    // Display elapsed time from top level component
+                    // @TODO: System for multiple animation clips (prob nested like After Effects)
+                    // Elapsed time input (click for exact or drag)
+                    if ui
+                        .add(egui::DragValue::new(&mut animation_state.elapsed_time).speed(0.1))
+                        .changed()
+                    {
+                        // We use a dirty flag to update the state in another system to keep UI clean
+                        animation_state.elapsed_time_update = true;
+                    };
                 });
 
-                // Display elapsed time from top level component
-                // @TODO: System for multiple animation clips (prob nested like After Effects)
-                // Elapsed time input (click for exact or drag)
-                if ui
-                    .add(egui::DragValue::new(&mut animation_state.elapsed_time).speed(0.1))
-                    .changed()
-                {
-                    // We use a dirty flag to update the state in another system to keep UI clean
-                    animation_state.elapsed_time_update = true;
-                };
+                // Render the UI and store the response in a variable for use later
+                let plot_ui = example_plot(ui);
+
+                // Check if the user has clicked on it
+                if plot_ui.clicked() {
+                    // Grab the mouse position
+                    if let Some(position) = plot_ui.interact_pointer_pos() {
+                        println!("Timeline clicked: X: {}, Y: {}", position.x, position.y);
+                    }
+                }
             });
 
             // Background (with hover)
@@ -132,6 +145,38 @@ fn ui_example_system(
         .response
         .rect
         .height();
+}
+
+// The "Timeline" UI - a line graph using egui's Plot and Line APIs
+fn example_plot(ui: &mut egui::Ui) -> egui::Response {
+    use egui::plot::{Line, PlotPoints};
+    let n = 128;
+    let line = Line::new(
+        (0..=n)
+            .map(|i| {
+                use std::f64::consts::TAU;
+                let x = egui::remap(i as f64, 0.0..=n as f64, -TAU..=TAU);
+                // match self.plot {
+                //     Plot::Sin => [x, x.sin()],
+                //     Plot::Bell => [x, 10.0 * gaussian(x)],
+                //     Plot::Sigmoid => [x, sigmoid(x)],
+                // }
+                [x, x.sin()]
+            })
+            .collect::<PlotPoints>(),
+    );
+    egui::plot::Plot::new("example_plot")
+        .show_axes([true, false])
+        .allow_drag(true)
+        .allow_zoom(false)
+        .allow_scroll(false)
+        .center_x_axis(false)
+        .center_y_axis(true)
+        .width(400.0)
+        .height(200.0)
+        .data_aspect(1.0)
+        .show(ui, |plot_ui| plot_ui.line(line))
+        .response
 }
 
 fn setup_system(
