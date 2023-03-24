@@ -3,7 +3,10 @@ use bevy::{
     render::{camera::Projection, mesh::Indices},
     window::PrimaryWindow,
 };
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{
+    egui::{self, Color32, Pos2, Stroke},
+    EguiContexts, EguiPlugin,
+};
 use std::f32::consts::PI;
 
 #[derive(Default, Resource)]
@@ -128,16 +131,39 @@ fn ui_example_system(
                 });
 
                 // Render the UI and store the response in a variable for use later
-                let plot_ui = example_plot(ui);
+                // let plot_ui = example_plot(ui);
 
                 // Check if the user has clicked on it
-                if plot_ui.clicked() {
-                    // Grab the mouse position
-                    if let Some(position) = plot_ui.interact_pointer_pos() {
-                        println!("Timeline clicked: X: {}, Y: {}", position.x, position.y);
-                    }
-                }
+                // if plot_ui.clicked() {
+                //     // Grab the mouse position
+                //     if let Some(position) = plot_ui.interact_pointer_pos() {
+                //         println!("Timeline clicked: X: {}, Y: {}", position.x, position.y);
+                //     }
+                // }
+
+                // ui.painter().line_segment(
+                //     [Pos2 { x: 0.0, y: 0.0 }, Pos2 { x: 420.0, y: 420.0 }],
+                //     Stroke {
+                //         width: 10.0,
+                //         color: Color32::BLUE,
+                //     },
+                // );
             });
+
+            let timeline_container = ui
+                .vertical(|ui| {
+                    ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
+                })
+                .response
+                .rect;
+
+            ui.painter_at(timeline_container).line_segment(
+                [Pos2 { x: 0.0, y: 0.0 }, Pos2 { x: 420.0, y: 420.0 }],
+                Stroke {
+                    width: 10.0,
+                    color: Color32::BLUE,
+                },
+            );
 
             // Background (with hover)
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
@@ -167,14 +193,18 @@ fn example_plot(ui: &mut egui::Ui) -> egui::Response {
     );
     egui::plot::Plot::new("example_plot")
         .show_axes([true, false])
+        .sharp_grid_lines(true)
         .allow_drag(true)
         .allow_zoom(false)
         .allow_scroll(false)
         .center_x_axis(false)
         .center_y_axis(true)
+        // .clamp_grid(true)
+        // .auto_bounds_x()
         .width(400.0)
         .height(200.0)
         .data_aspect(1.0)
+        .min_size(bevy_egui::egui::Vec2::new(0.0, 0.0))
         .show(ui, |plot_ui| plot_ui.line(line))
         .response
 }
