@@ -165,10 +165,17 @@ fn ui_example_system(
                     response.rect,
                 );
 
+                // Has timeline been hovered?
                 if response.hovered() {
+                    // Get the hover position
                     if let Some(position) = response.hover_pos() {
+                        // Let's store a relative coordinate to the canvas at the top left.
+                        // We'll use it later to determine the Y axis.
+                        // When we use the mouse position, it's already in "screen space"
                         let relative_point = to_screen.transform_pos(Pos2 { x: 0.0, y: 0.0 });
 
+                        // The 2 points we need for the line segment
+                        // We use our mouse cursor's X position directly, and the relative point for Y
                         let first_point = Pos2 {
                             x: position.x,
                             y: relative_point.y,
@@ -177,8 +184,8 @@ fn ui_example_system(
                             x: position.x,
                             y: relative_point.y + 300.0,
                         };
+
                         // Draw a vertical line
-                        // draw_line(&to_screen, &painter, first_point, second_point);
                         painter.add(Shape::LineSegment {
                             points: [first_point, second_point],
                             stroke: Stroke {
@@ -186,6 +193,7 @@ fn ui_example_system(
                                 color: Color32::RED,
                             },
                         });
+                        // In case you want to see what's happening
                         // dbg!(position);
                     };
                 }
