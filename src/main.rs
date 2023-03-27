@@ -47,12 +47,27 @@ impl Default for AnimationState {
     }
 }
 
+#[derive(Resource)]
+struct TimelineState {
+    drag_start: Pos2,
+    position: Pos2,
+}
+impl Default for TimelineState {
+    fn default() -> Self {
+        TimelineState {
+            drag_start: Pos2 { x: 0.0, y: 0.0 },
+            position: Pos2 { x: 100.0, y: 100.0 },
+        }
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .init_resource::<OccupiedScreenSpace>()
         .init_resource::<AnimationState>()
+        .init_resource::<TimelineState>()
         .add_startup_system(setup_system)
         .add_system(ui_example_system)
         .add_system(update_camera_transform_system)
@@ -64,6 +79,7 @@ fn ui_example_system(
     mut contexts: EguiContexts,
     mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
     mut animation_state: ResMut<AnimationState>,
+    mut timeline_state: ResMut<TimelineState>,
     animation_players: Query<&mut AnimationPlayer, With<Name>>,
 ) {
     let ctx = contexts.ctx_mut();
@@ -217,13 +233,40 @@ fn ui_example_system(
                     egui::Label::new("Animation #1"),
                 );
 
-                ui.put(
+                let animation_clip_button = ui.put(
                     Rect {
-                        min: to_screen.transform_pos(Pos2 { x: 100.0, y: 100.0 }),
-                        max: to_screen.transform_pos(Pos2 { x: 350.0, y: 200.0 }),
+                        min: to_screen.transform_pos(timeline_state.position),
+                        max: to_screen.transform_pos(Pos2 {
+                            x: timeline_state.position.x + 150.0,
+                            y: timeline_state.position.y + 100.0,
+                        }),
                     },
-                    egui::Button::new("Square"),
+                    egui::Button::new("Square").sense(Sense::drag()),
                 );
+
+                if animation_clip_button.drag_started() {
+                    println!("Button dragging, track movement");
+                    dbg!(animation_clip_button.interact_pointer_pos());
+                    if let Some(new_drag_start_position) =
+                        animation_clip_button.interact_pointer_pos()
+                    {
+                        timeline_state.drag_start = new_drag_start_position;
+                    }
+                }
+                if animation_clip_button.drag_released() {
+                    println!("Button done, let's move it");
+                    dbg!(animation_clip_button.interact_pointer_pos());
+                    if let Some(new_drag_end_position) =
+                        animation_clip_button.interact_pointer_pos()
+                    {
+                        dbg!(new_drag_end_position.x - timeline_state.drag_start.x);
+                        let drag_delta = new_drag_end_position.x - timeline_state.drag_start.x;
+                        timeline_state.position.x = timeline_state.position.x + drag_delta;
+                    }
+
+                    // Reset the drag
+                    timeline_state.drag_start = Pos2 { x: 0.0, y: 0.0 }
+                }
 
                 // Has timeline been hovered?
                 if response.hovered() {
