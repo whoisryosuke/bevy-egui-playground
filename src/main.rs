@@ -7,7 +7,9 @@ use bevy_egui::{
     egui::{
         self,
         emath::{Rect, RectTransform},
-        Color32, Painter, Pos2, Rounding, Sense, Shape, Stroke,
+        text::{Fonts, LayoutJob},
+        Color32, FontDefinitions, FontFamily, FontId, Painter, Pos2, Rounding, Sense, Shape,
+        Stroke, TextFormat,
     },
     EguiContexts, EguiPlugin,
 };
@@ -192,7 +194,7 @@ fn ui_example_system(
                 painter.add(Shape::Rect(egui::epaint::RectShape {
                     rect: Rect {
                         min: to_screen.transform_pos(Pos2 { x: 0.0, y: 0.0 }),
-                        max: to_screen.transform_pos(Pos2 { x: 250.0, y: 250.0 }),
+                        max: to_screen.transform_pos(Pos2 { x: 250.0, y: 100.0 }),
                     },
                     rounding: Rounding {
                         nw: 0.0,
@@ -206,6 +208,22 @@ fn ui_example_system(
                         color: Color32::WHITE,
                     },
                 }));
+
+                ui.put(
+                    Rect {
+                        min: to_screen.transform_pos(Pos2 { x: 0.0, y: 0.0 }),
+                        max: to_screen.transform_pos(Pos2 { x: 250.0, y: 100.0 }),
+                    },
+                    egui::Label::new("Animation #1"),
+                );
+
+                ui.put(
+                    Rect {
+                        min: to_screen.transform_pos(Pos2 { x: 100.0, y: 100.0 }),
+                        max: to_screen.transform_pos(Pos2 { x: 350.0, y: 200.0 }),
+                    },
+                    egui::Button::new("Square"),
+                );
 
                 // Has timeline been hovered?
                 if response.hovered() {
