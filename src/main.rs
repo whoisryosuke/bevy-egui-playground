@@ -7,7 +7,7 @@ use bevy_egui::{
     egui::{
         self,
         emath::{Rect, RectTransform},
-        Color32, Painter, Pos2, Sense, Shape, Stroke,
+        Color32, Painter, Pos2, Rounding, Sense, Shape, Stroke,
     },
     EguiContexts, EguiPlugin,
 };
@@ -165,6 +165,48 @@ fn ui_example_system(
                     response.rect,
                 );
 
+                // The width of the screen
+                let timeline_length = ui.available_width() as usize;
+                // The "gap" between lines
+                let timeline_line_gap = 20;
+                // The number of lines to draw given the available width and gap
+                let timeline_num_lines = timeline_length / timeline_line_gap;
+                // We convert the gap to a float to do positional/vector math later
+                let timeline_line_gap_float = timeline_line_gap as f32;
+
+                // Loop over the number of lines we need
+                for index in 0..timeline_num_lines {
+                    // Use the range index to determine an initial X position
+                    let unscaled_x = 1.0 * (index as f32);
+                    // Then we scale it using the gap
+                    let x = unscaled_x * timeline_line_gap_float;
+
+                    // Create our 2 points for the line segment
+                    let first_point = Pos2 { x, y: 0.0 };
+                    let second_point = Pos2 { x, y: 300.0 };
+                    // Draw a vertical line
+                    draw_line(&to_screen, &painter, first_point, second_point);
+                }
+
+                // Draw squares representing animations
+                painter.add(Shape::Rect(egui::epaint::RectShape {
+                    rect: Rect {
+                        min: to_screen.transform_pos(Pos2 { x: 0.0, y: 0.0 }),
+                        max: to_screen.transform_pos(Pos2 { x: 250.0, y: 250.0 }),
+                    },
+                    rounding: Rounding {
+                        nw: 0.0,
+                        ne: 0.0,
+                        sw: 0.0,
+                        se: 0.0,
+                    },
+                    fill: Color32::BLUE,
+                    stroke: Stroke {
+                        width: 2.0,
+                        color: Color32::WHITE,
+                    },
+                }));
+
                 // Has timeline been hovered?
                 if response.hovered() {
                     // Get the hover position
@@ -197,47 +239,6 @@ fn ui_example_system(
                         // dbg!(position);
                     };
                 }
-
-                // The width of the screen
-                let timeline_length = ui.available_width() as usize;
-                // The "gap" between lines
-                let timeline_line_gap = 20;
-                // The number of lines to draw given the available width and gap
-                let timeline_num_lines = timeline_length / timeline_line_gap;
-                // We convert the gap to a float to do positional/vector math later
-                let timeline_line_gap_float = timeline_line_gap as f32;
-
-                // Loop over the number of lines we need
-                (0..timeline_num_lines).for_each(move |index| {
-                    // Use the range index to determine an initial X position
-                    let unscaled_x = 1.0 * (index as f32);
-                    // Then we scale it using the gap
-                    let x = unscaled_x * timeline_line_gap_float;
-
-                    // Create our 2 points for the line segment
-                    let first_point = Pos2 { x, y: 0.0 };
-                    let second_point = Pos2 { x, y: 300.0 };
-                    // Draw a vertical line
-                    draw_line(&to_screen, &painter, first_point, second_point);
-                });
-
-                // let timeline_container = ui
-                //     .allocate_rect(
-                //         bevy_egui::egui::Rect {
-                //             min: Pos2 { x: 10.0, y: 10.0 },
-                //             max: Pos2 { x: 40.0, y: 40.0 },
-                //         },
-                //         egui::Sense::hover(),
-                //     )
-                //     .rect;
-
-                // ui.painter_at(timeline_container).line_segment(
-                //     [Pos2 { x: 0.0, y: 0.0 }, Pos2 { x: 420.0, y: 420.0 }],
-                //     Stroke {
-                //         width: 10.0,
-                //         color: Color32::BLUE,
-                //     },
-                // );
             });
 
             // Background (with hover)
