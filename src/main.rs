@@ -49,12 +49,17 @@ impl Default for AnimationState {
 
 #[derive(Resource)]
 struct TimelineState {
+    // Is user dragging any timeline clips?
+    dragging: bool,
+    // Where did user start dragging? Used for calculating difference.
     drag_start: Pos2,
+    // Position of the clip. Ideally this would be a vec later for multiple clips.
     position: Pos2,
 }
 impl Default for TimelineState {
     fn default() -> Self {
         TimelineState {
+            dragging: false,
             drag_start: Pos2 { x: 0.0, y: 0.0 },
             position: Pos2 { x: 100.0, y: 100.0 },
         }
@@ -244,6 +249,7 @@ fn ui_example_system(
                     egui::Button::new("Square").sense(Sense::drag()),
                 );
 
+                // Check for dragging and store initial position
                 if animation_clip_button.drag_started() {
                     println!("Button dragging, track movement");
                     dbg!(animation_clip_button.interact_pointer_pos());
@@ -251,21 +257,29 @@ fn ui_example_system(
                         animation_clip_button.interact_pointer_pos()
                     {
                         timeline_state.drag_start = new_drag_start_position;
+                        timeline_state.dragging = true;
                     }
                 }
-                if animation_clip_button.drag_released() {
-                    println!("Button done, let's move it");
-                    dbg!(animation_clip_button.interact_pointer_pos());
+                // Is user dragging? Calc difference, and update button position
+                if timeline_state.dragging {
                     if let Some(new_drag_end_position) =
                         animation_clip_button.interact_pointer_pos()
                     {
-                        dbg!(new_drag_end_position.x - timeline_state.drag_start.x);
+                        // Calculate the difference from the last stored position
                         let drag_delta = new_drag_end_position.x - timeline_state.drag_start.x;
+                        // Update the clip position in state
                         timeline_state.position.x = timeline_state.position.x + drag_delta;
+                        // Update the last stored position to the mouse's current position
+                        // Since we're updating each "tick", this makes it dragging seamless
+                        timeline_state.drag_start.x = new_drag_end_position.x;
                     }
-
+                }
+                // Check if dragging is done
+                if animation_clip_button.drag_released() {
+                    println!("Button done moving");
                     // Reset the drag
-                    timeline_state.drag_start = Pos2 { x: 0.0, y: 0.0 }
+                    timeline_state.drag_start = Pos2 { x: 0.0, y: 0.0 };
+                    timeline_state.dragging = false;
                 }
 
                 // Has timeline been hovered?
