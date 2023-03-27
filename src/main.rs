@@ -133,6 +133,10 @@ fn ui_example_system(
                     if ui.button(play_btn_label).clicked() {
                         animation_state.paused = !animation_state.paused;
                     }
+                    if ui.button("Reset").clicked() {
+                        animation_state.elapsed_time = 0.0;
+                        animation_state.elapsed_time_update = true;
+                    }
 
                     // Speed buttons
                     ui.horizontal(|ui| {
