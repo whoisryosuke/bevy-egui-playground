@@ -85,7 +85,7 @@ fn ui_example_system(
     mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
     mut animation_state: ResMut<AnimationState>,
     mut timeline_state: ResMut<TimelineState>,
-    animation_players: Query<&mut AnimationPlayer, With<Name>>,
+    mut animations: ResMut<Assets<AnimationClip>>,
 ) {
     let ctx = contexts.ctx_mut();
 
@@ -161,25 +161,6 @@ fn ui_example_system(
                     };
                 });
 
-                // Render the UI and store the response in a variable for use later
-                // let plot_ui = example_plot(ui);
-
-                // Check if the user has clicked on it
-                // if plot_ui.clicked() {
-                //     // Grab the mouse position
-                //     if let Some(position) = plot_ui.interact_pointer_pos() {
-                //         println!("Timeline clicked: X: {}, Y: {}", position.x, position.y);
-                //     }
-                // }
-
-                // ui.painter().line_segment(
-                //     [Pos2 { x: 0.0, y: 0.0 }, Pos2 { x: 420.0, y: 420.0 }],
-                //     Stroke {
-                //         width: 10.0,
-                //         color: Color32::BLUE,
-                //     },
-                // );
-
                 // Create a "canvas" for drawing on that's 100% x 300px
                 let (response, painter) = ui.allocate_painter(
                     bevy_egui::egui::Vec2::new(ui.available_width(), 300.0),
@@ -215,33 +196,18 @@ fn ui_example_system(
                     draw_line(&to_screen, &painter, first_point, second_point);
                 }
 
+                // Access the animation clips and their curves/keyframes
+                // This is for debugging / example purposes - this logging process is slow
+                // for (_, animation) in animations.iter() {
+                //     for curves in animation.curves() {
+                //         for curve in curves {
+                //             dbg!("Animation curve:");
+                //             dbg!(curve);
+                //         }
+                //     }
+                // }
+
                 // Draw squares representing animations
-                painter.add(Shape::Rect(egui::epaint::RectShape {
-                    rect: Rect {
-                        min: to_screen.transform_pos(Pos2 { x: 0.0, y: 0.0 }),
-                        max: to_screen.transform_pos(Pos2 { x: 250.0, y: 100.0 }),
-                    },
-                    rounding: Rounding {
-                        nw: 0.0,
-                        ne: 0.0,
-                        sw: 0.0,
-                        se: 0.0,
-                    },
-                    fill: Color32::BLUE,
-                    stroke: Stroke {
-                        width: 2.0,
-                        color: Color32::WHITE,
-                    },
-                }));
-
-                ui.put(
-                    Rect {
-                        min: to_screen.transform_pos(Pos2 { x: 0.0, y: 0.0 }),
-                        max: to_screen.transform_pos(Pos2 { x: 250.0, y: 100.0 }),
-                    },
-                    egui::Label::new("Animation #1"),
-                );
-
                 let animation_clip_button = ui.put(
                     Rect {
                         min: to_screen.transform_pos(timeline_state.position),
