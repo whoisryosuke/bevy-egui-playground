@@ -1,5 +1,6 @@
 use bevy::{
     prelude::*,
+    reflect::Enum,
     render::{camera::Projection, mesh::Indices},
     window::PrimaryWindow,
 };
@@ -102,6 +103,33 @@ fn ui_example_system(
         .resizable(true)
         .show(ctx, |ui| {
             ui.heading("Properties");
+
+            ui.vertical(|ui| {
+                for (_, animation) in animations.iter_mut() {
+                    // ⛔ This yields a reference to a curve that isn't mutable
+                    for curves in animation.curves() {
+                        for curve in curves {
+                            // Get the keyframe type name (translate, rotate, scale)
+                            let keyframe_type = curve.keyframes.variant_name();
+
+                            // Render an input for each timestamp so user can change them
+                            ui.horizontal(|ui| {
+                                ui.label(keyframe_type);
+
+                                for timestamp in curve.keyframe_timestamps.iter_mut() {
+                                    // This would work -- if curves were mutable...
+                                    ui.add(
+                                        egui::DragValue::new(timestamp)
+                                            .speed(0.1)
+                                            .clamp_range(0..=100),
+                                    );
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+
             ui.allocate_rect(ui.available_rect_before_wrap(), egui::Sense::hover());
         })
         .response
