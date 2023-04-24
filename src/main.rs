@@ -1,6 +1,8 @@
 use bevy::{
+    core_pipeline::clear_color::ClearColorConfig,
     prelude::*,
     render::{camera::Projection, mesh::Indices},
+    sprite::MaterialMesh2dBundle,
     window::PrimaryWindow,
 };
 use bevy_egui::{
@@ -73,6 +75,14 @@ const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
     },
 ];
 
+struct ShowClickwheel;
+
+#[derive(Component)]
+struct ClickwheelCollider;
+
+#[derive(Component)]
+struct ClickwheelObject;
+
 #[derive(Resource)]
 struct ClickwheelState {
     active: bool,
@@ -97,6 +107,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
+        .add_event::<ShowClickwheel>()
         .insert_resource(ClickwheelState {
             active: false,
             hovered: 0,
@@ -156,6 +167,8 @@ fn main() {
         .add_startup_system(setup_system)
         .add_system(ui_example_system)
         .add_system(check_input)
+        .add_system(spawn_clickwheel_colliders)
+        .add_system(despawn_clickwheel_colliders)
         .run();
 }
 
@@ -164,19 +177,10 @@ fn ui_example_system(
     svgs: Res<UISVGs>,
     mut clickwheel_state: ResMut<ClickwheelState>,
 ) {
+    return;
     // Not active? Don't render UI
     if !clickwheel_state.active {
         return;
-    }
-
-    if let Some(current_position) = clickwheel_state.current_position {
-        if let Some(initial_position) = clickwheel_state.initial_position {
-            println!(
-                "Position Delta {}, {}",
-                current_position.x - initial_position.x,
-                current_position.y - initial_position.y,
-            );
-        }
     }
 
     // Create a collection to quickly loop over all SVGs
@@ -275,7 +279,7 @@ fn ui_example_system(
                     egui::Image::new(svg.texture_id(ctx), size),
                 );
                 if svg.hovered() {
-                    println!("hovered over {}", index);
+                    // println!("hovered over {}", index);
                     clickwheel_state.hovered = index;
                 }
             }
@@ -318,23 +322,30 @@ fn setup_system(
     let camera_transform =
         Transform::from_translation(camera_pos).looking_at(CAMERA_TARGET, Vec3::Y);
 
-    commands.spawn(Camera3dBundle {
-        transform: camera_transform,
-        ..Default::default()
-    });
+    commands.spawn((
+        Camera3dBundle {
+            transform: camera_transform,
+            ..Default::default()
+        },
+        // UI config is a separate component
+        UiCameraConfig { show_ui: false },
+    ));
 }
 
 fn check_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut cursor_events: EventReader<CursorMoved>,
     mut clickwheel_state: ResMut<ClickwheelState>,
+    mut show_clickwheel_event: EventWriter<ShowClickwheel>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::LControl) {
-        println!("[KEYBOARD] Pressed left control");
+    if keyboard_input.just_pressed(KeyCode::V) {
+        println!("[KEYBOARD] Pressed clickwheel btn");
         clickwheel_state.active = true;
+
+        show_clickwheel_event.send(ShowClickwheel);
     }
-    if keyboard_input.just_released(KeyCode::LControl) {
-        println!("[KEYBOARD] Released left control");
+    if keyboard_input.just_released(KeyCode::V) {
+        println!("[KEYBOARD] Released clickwheel btn");
         clickwheel_state.active = false;
         clickwheel_state.initial_position = None;
         clickwheel_state.current_position = None;
@@ -344,15 +355,93 @@ fn check_input(
         for cursor in cursor_events.iter() {
             // Do we have an initial position?
             if clickwheel_state.initial_position.is_none() {
-                println!(
-                    "New cursor position: X: {}, Y: {}",
-                    cursor.position.x, cursor.position.y
-                );
+                // println!(
+                //     "New cursor position: X: {}, Y: {}",
+                //     cursor.position.x, cursor.position.y
+                // );
                 clickwheel_state.initial_position = Some(cursor.position.clone());
             }
 
             // Store current position
             clickwheel_state.current_position = Some(cursor.position.clone());
+        }
+    }
+}
+
+fn spawn_clickwheel_colliders(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut show_clickwheel_events: EventReader<ShowClickwheel>,
+) {
+    if !show_clickwheel_events.is_empty() {
+        for _ in show_clickwheel_events.iter() {
+            println!("spawning clickwheel collider");
+
+            // Spawn a 2D camera with a clear background for UI
+            commands.spawn((
+                Camera2dBundle {
+                    camera_2d: Camera2d {
+                        clear_color: ClearColorConfig::None,
+                    },
+
+                    ..Default::default()
+                },
+                ClickwheelObject,
+            ));
+
+            // Quad
+            commands.spawn((
+                ClickwheelObject,
+                ClickwheelCollider,
+                MaterialMesh2dBundle {
+                    mesh: meshes
+                        .add(shape::Quad::new(Vec2::new(50., 100.)).into())
+                        .into(),
+                    material: materials.add(ColorMaterial::from(Color::LIME_GREEN)),
+                    transform: Transform::from_translation(Vec3::new(50., 0., -3.)),
+                    ..default()
+                },
+            ));
+
+            // Circle
+            commands.spawn((
+                ClickwheelCollider,
+                MaterialMesh2dBundle {
+                    mesh: meshes.add(shape::Circle::new(50.).into()).into(),
+                    material: materials.add(ColorMaterial::from(Color::PURPLE)),
+                    transform: Transform::from_translation(Vec3::new(-150., 0., 0.)),
+                    ..default()
+                },
+            ));
+
+            // Rectangle
+            commands.spawn((
+                ClickwheelCollider,
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::rgb(0.25, 0.25, 0.75),
+                        custom_size: Some(Vec2::new(50.0, 100.0)),
+                        ..default()
+                    },
+                    transform: Transform::from_translation(Vec3::new(-50., 0., 0.)),
+                    ..default()
+                },
+            ));
+        }
+    }
+}
+
+fn despawn_clickwheel_colliders(
+    mut commands: Commands,
+    clickwheel_state: Res<ClickwheelState>,
+    colliders: Query<Entity, With<ClickwheelObject>>,
+) {
+    let collider_collection = colliders.iter();
+    if !clickwheel_state.active && collider_collection.len() > 0 {
+        println!("despawning clickwheel collider");
+        for collider in collider_collection {
+            commands.entity(collider).despawn_recursive();
         }
     }
 }
