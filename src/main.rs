@@ -77,6 +77,8 @@ const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
 struct ClickwheelState {
     active: bool,
     hovered: usize,
+    initial_position: Option<Vec2>,
+    current_position: Option<Vec2>,
 }
 
 #[derive(Resource)]
@@ -96,8 +98,10 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .insert_resource(ClickwheelState {
-            active: true,
+            active: false,
             hovered: 0,
+            initial_position: None,
+            current_position: None,
         })
         .insert_resource(UISVGs {
             clickwheel_segment_1: RetainedImage::from_svg_bytes_with_size(
@@ -151,6 +155,7 @@ fn main() {
         })
         .add_startup_system(setup_system)
         .add_system(ui_example_system)
+        .add_system(check_input)
         .run();
 }
 
@@ -159,6 +164,21 @@ fn ui_example_system(
     svgs: Res<UISVGs>,
     mut clickwheel_state: ResMut<ClickwheelState>,
 ) {
+    // Not active? Don't render UI
+    if !clickwheel_state.active {
+        return;
+    }
+
+    if let Some(current_position) = clickwheel_state.current_position {
+        if let Some(initial_position) = clickwheel_state.initial_position {
+            println!(
+                "Position Delta {}, {}",
+                current_position.x - initial_position.x,
+                current_position.y - initial_position.y,
+            );
+        }
+    }
+
     // Create a collection to quickly loop over all SVGs
     let svg_order = vec![
         &svgs.clickwheel_segment_1,
@@ -302,4 +322,37 @@ fn setup_system(
         transform: camera_transform,
         ..Default::default()
     });
+}
+
+fn check_input(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut cursor_events: EventReader<CursorMoved>,
+    mut clickwheel_state: ResMut<ClickwheelState>,
+) {
+    if keyboard_input.just_pressed(KeyCode::LControl) {
+        println!("[KEYBOARD] Pressed left control");
+        clickwheel_state.active = true;
+    }
+    if keyboard_input.just_released(KeyCode::LControl) {
+        println!("[KEYBOARD] Released left control");
+        clickwheel_state.active = false;
+        clickwheel_state.initial_position = None;
+        clickwheel_state.current_position = None;
+    }
+
+    if clickwheel_state.active {
+        for cursor in cursor_events.iter() {
+            // Do we have an initial position?
+            if clickwheel_state.initial_position.is_none() {
+                println!(
+                    "New cursor position: X: {}, Y: {}",
+                    cursor.position.x, cursor.position.y
+                );
+                clickwheel_state.initial_position = Some(cursor.position.clone());
+            }
+
+            // Store current position
+            clickwheel_state.current_position = Some(cursor.position.clone());
+        }
+    }
 }
