@@ -13,7 +13,14 @@ const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
 #[derive(Resource)]
 struct UISVGs {
-    clickwheel_segment: RetainedImage,
+    clickwheel_segment_1: RetainedImage,
+    clickwheel_segment_2: RetainedImage,
+    clickwheel_segment_3: RetainedImage,
+    clickwheel_segment_4: RetainedImage,
+    clickwheel_segment_5: RetainedImage,
+    clickwheel_segment_6: RetainedImage,
+    clickwheel_segment_7: RetainedImage,
+    clickwheel_segment_8: RetainedImage,
 }
 
 fn main() {
@@ -21,9 +28,51 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .insert_resource(UISVGs {
-            clickwheel_segment: RetainedImage::from_svg_bytes_with_size(
-                "assets/clickwheel_segment.svg",
-                include_bytes!("assets/clickwheel_segment.svg"),
+            clickwheel_segment_1: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_01.svg",
+                include_bytes!("assets/clickwheel_segment_01.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+            clickwheel_segment_2: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_02.svg",
+                include_bytes!("assets/clickwheel_segment_02.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+            clickwheel_segment_3: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_03.svg",
+                include_bytes!("assets/clickwheel_segment_03.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+            clickwheel_segment_4: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_04.svg",
+                include_bytes!("assets/clickwheel_segment_04.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+            clickwheel_segment_5: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_05.svg",
+                include_bytes!("assets/clickwheel_segment_05.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+            clickwheel_segment_6: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_06.svg",
+                include_bytes!("assets/clickwheel_segment_06.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+            clickwheel_segment_7: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_07.svg",
+                include_bytes!("assets/clickwheel_segment_07.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+            clickwheel_segment_8: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment_08.svg",
+                include_bytes!("assets/clickwheel_segment_08.svg"),
                 egui_extras::image::FitTo::Original,
             )
             .unwrap(),
@@ -50,11 +99,31 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
         ..old
     });
 
-    egui::Window::new("Hello").title_bar(false).show(ctx, |ui| {
-        let max_size = ui.available_size();
-        let size = egui::Vec2::new(254.5, 362.73);
-        svgs.clickwheel_segment.show_size(ui, size);
-    });
+    egui::Window::new("Hello")
+        .fixed_size(ctx.available_rect().size())
+        .title_bar(false)
+        .show(ctx, |ui| {
+            let max_size = ui.available_size();
+            let size_1 = egui::Vec2::new(254.5, 362.73);
+            let size_2 = egui::Vec2::new(255.45, 362.78);
+            let size_3 = egui::Vec2::new(356.1, 255.28);
+            // svgs.clickwheel_segment_1.show_size(ui, size_1);
+            // svgs.clickwheel_segment_2.show_size(ui, size_2);
+            // svgs.clickwheel_segment_3.show_size(ui, size_3);
+
+            ui.put(
+                egui::Rect {
+                    // Coordinates of "top left"
+                    min: egui::Pos2 { x: 30.0, y: 30.0 },
+                    // Coordinates of "bottom right"
+                    max: egui::Pos2 {
+                        x: size_1.x,
+                        y: size_1.y,
+                    },
+                },
+                egui::Image::new(svgs.clickwheel_segment_1.texture_id(ctx), size_1),
+            );
+        });
 }
 
 fn setup_system(
