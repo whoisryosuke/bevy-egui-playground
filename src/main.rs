@@ -3,7 +3,10 @@ use bevy::{
     render::{camera::Projection, mesh::Indices},
     window::PrimaryWindow,
 };
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::{
+    egui::{self, epaint, Color32},
+    EguiContexts, EguiPlugin,
+};
 use egui_extras::RetainedImage;
 
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
@@ -32,11 +35,25 @@ fn main() {
 
 fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
     let ctx = contexts.ctx_mut();
-    egui::Window::new("Hello").show(ctx, |ui| {
-        ui.label("world");
+    let old = ctx.style().visuals.clone();
+    ctx.set_visuals(egui::Visuals {
+        window_fill: Color32::TRANSPARENT,
+        panel_fill: Color32::TRANSPARENT,
+        window_stroke: egui::Stroke {
+            color: Color32::TRANSPARENT,
+            width: 0.0,
+        },
+        window_shadow: epaint::Shadow {
+            color: Color32::TRANSPARENT,
+            ..old.window_shadow
+        },
+        ..old
+    });
 
+    egui::Window::new("Hello").title_bar(false).show(ctx, |ui| {
         let max_size = ui.available_size();
-        svgs.clickwheel_segment.show_size(ui, max_size);
+        let size = egui::Vec2::new(254.5, 362.73);
+        svgs.clickwheel_segment.show_size(ui, size);
     });
 }
 
