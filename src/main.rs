@@ -4,37 +4,39 @@ use bevy::{
     window::PrimaryWindow,
 };
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-
-#[derive(Default, Resource)]
-struct OccupiedScreenSpace {
-    left: f32,
-    top: f32,
-    right: f32,
-    bottom: f32,
-}
+use egui_extras::RetainedImage;
 
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
-#[derive(Resource, Deref, DerefMut)]
-struct OriginalCameraTransform(Transform);
+#[derive(Resource)]
+struct UISVGs {
+    clickwheel_segment: RetainedImage,
+}
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
-        .init_resource::<OccupiedScreenSpace>()
+        .insert_resource(UISVGs {
+            clickwheel_segment: RetainedImage::from_svg_bytes_with_size(
+                "assets/clickwheel_segment.svg",
+                include_bytes!("assets/clickwheel_segment.svg"),
+                egui_extras::image::FitTo::Original,
+            )
+            .unwrap(),
+        })
         .add_startup_system(setup_system)
         .add_system(ui_example_system)
         .run();
 }
 
-fn ui_example_system(
-    mut contexts: EguiContexts,
-    mut occupied_screen_space: ResMut<OccupiedScreenSpace>,
-) {
+fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
     let ctx = contexts.ctx_mut();
     egui::Window::new("Hello").show(ctx, |ui| {
         ui.label("world");
+
+        let max_size = ui.available_size();
+        svgs.clickwheel_segment.show_size(ui, max_size);
     });
 }
 

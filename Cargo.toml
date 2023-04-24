@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 bevy = "0.10.0"
 bevy_egui = "0.20.1"
+egui_extras = { version = "0.21.0", features = ["svg"] }
