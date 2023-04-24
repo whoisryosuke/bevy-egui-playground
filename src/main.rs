@@ -11,6 +11,66 @@ use egui_extras::RetainedImage;
 
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
 
+struct ClickwheelImageProps {
+    position: egui::Pos2,
+    size: egui::Vec2,
+}
+
+const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
+    // Segment #1
+    ClickwheelImageProps {
+        position: egui::Pos2 { x: 113.36, y: 0.05 },
+        size: egui::Vec2::new(254.5, 362.73),
+    },
+    // Segment #2
+    ClickwheelImageProps {
+        position: egui::Pos2 { x: 387.21, y: 0.0 },
+        size: egui::Vec2::new(255.45, 362.78),
+    },
+    // Segment #3
+    ClickwheelImageProps {
+        position: egui::Pos2 {
+            x: 400.91,
+            y: 121.19,
+        },
+        size: egui::Vec2::new(356.1, 255.28),
+    },
+    // Segment #4
+    ClickwheelImageProps {
+        position: egui::Pos2 {
+            x: 400.91,
+            y: 395.83,
+        },
+        size: egui::Vec2::new(355.71, 247.72),
+    },
+    // Segment #5
+    ClickwheelImageProps {
+        position: egui::Pos2 {
+            x: 387.21,
+            y: 409.52,
+        },
+        size: egui::Vec2::new(247.5, 347.29),
+    },
+    // Segment #6
+    ClickwheelImageProps {
+        position: egui::Pos2 {
+            x: 121.29,
+            y: 409.52,
+        },
+        size: egui::Vec2::new(246.57, 347.25),
+    },
+    // Segment #7
+    ClickwheelImageProps {
+        position: egui::Pos2 { x: 0.39, y: 395.83 },
+        size: egui::Vec2::new(353.77, 246.74),
+    },
+    // Segment #8
+    ClickwheelImageProps {
+        position: egui::Pos2 { x: 0.0, y: 122.2 },
+        size: egui::Vec2::new(354.16, 254.27),
+    },
+];
+
 #[derive(Resource)]
 struct UISVGs {
     clickwheel_segment_1: RetainedImage,
@@ -83,7 +143,20 @@ fn main() {
 }
 
 fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
+    let svg_order = vec![
+        &svgs.clickwheel_segment_1,
+        &svgs.clickwheel_segment_2,
+        &svgs.clickwheel_segment_3,
+        &svgs.clickwheel_segment_4,
+        &svgs.clickwheel_segment_5,
+        &svgs.clickwheel_segment_6,
+        &svgs.clickwheel_segment_7,
+        &svgs.clickwheel_segment_8,
+    ];
+
     let ctx = contexts.ctx_mut();
+
+    // Make the window transparent
     let old = ctx.style().visuals.clone();
     ctx.set_visuals(egui::Visuals {
         window_fill: Color32::TRANSPARENT,
@@ -99,30 +172,32 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
         ..old
     });
 
+    // Create a new full screen window
     egui::Window::new("Hello")
         .fixed_size(ctx.available_rect().size())
         .title_bar(false)
+        .collapsible(false)
+        .movable(false)
+        .resizable(false)
         .show(ctx, |ui| {
-            let max_size = ui.available_size();
-            let size_1 = egui::Vec2::new(254.5, 362.73);
-            let size_2 = egui::Vec2::new(255.45, 362.78);
-            let size_3 = egui::Vec2::new(356.1, 255.28);
-            // svgs.clickwheel_segment_1.show_size(ui, size_1);
-            // svgs.clickwheel_segment_2.show_size(ui, size_2);
-            // svgs.clickwheel_segment_3.show_size(ui, size_3);
-
-            ui.put(
-                egui::Rect {
-                    // Coordinates of "top left"
-                    min: egui::Pos2 { x: 30.0, y: 30.0 },
-                    // Coordinates of "bottom right"
-                    max: egui::Pos2 {
-                        x: size_1.x,
-                        y: size_1.y,
+            // Render UI
+            // Loop over all the clickwheel SVGs and render them
+            for (index, svg) in svg_order.iter().enumerate() {
+                // Absolutely position the SVG
+                ui.put(
+                    // Absolute position
+                    egui::Rect {
+                        // Coordinates of "top left"
+                        min: CLICKWHEEL_DATA[index].position,
+                        // Coordinates of "bottom right"
+                        max: egui::Pos2 {
+                            x: CLICKWHEEL_DATA[index].position.x + CLICKWHEEL_DATA[index].size.x,
+                            y: CLICKWHEEL_DATA[index].position.y + CLICKWHEEL_DATA[index].size.y,
+                        },
                     },
-                },
-                egui::Image::new(svgs.clickwheel_segment_1.texture_id(ctx), size_1),
-            );
+                    egui::Image::new(svg.texture_id(ctx), CLICKWHEEL_DATA[index].size),
+                );
+            }
         });
 }
 
