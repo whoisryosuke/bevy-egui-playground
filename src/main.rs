@@ -16,6 +16,7 @@ struct ClickwheelImageProps {
     size: egui::Vec2,
 }
 
+const CLICKWHEEL_WIDTH: f32 = 757.0;
 const CLICKWHEEL_HEIGHT: f32 = 756.82;
 const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
     // Segment #1
@@ -190,23 +191,32 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
             // Figure out what percent we need to scale the image to make it fit
             let clickwheel_scale = max_clickwheel_height / CLICKWHEEL_HEIGHT;
 
+            // Find the center Y position
+            let actual_clickwheel_height = CLICKWHEEL_HEIGHT * clickwheel_scale;
+            let offset_y_center = (max_screen_height / 2.0) - (actual_clickwheel_height / 2.0);
+
+            // Find the center X position
+            let max_screen_width = ui.available_width();
+            let actual_clickwheel_width = CLICKWHEEL_WIDTH * clickwheel_scale;
+            let offset_x_center = (max_screen_width / 2.0) - (actual_clickwheel_width / 2.0);
+
             // Offset the SVG
             // For some reason egui clips the top left corner by a chunk if we don't
             let offset = egui::Pos2::new(20.0, 20.0);
             // Loop over all the clickwheel SVGs and render them
             for (index, svg) in svg_order.iter().enumerate() {
                 // Scale accordingly
-                let max_x = offset.x
+                let max_x = offset_x_center
                     + (CLICKWHEEL_DATA[index].position.x + CLICKWHEEL_DATA[index].size.x)
                         * clickwheel_scale;
-                let max_y = offset.y
+                let max_y = offset_y_center
                     + (CLICKWHEEL_DATA[index].position.y + CLICKWHEEL_DATA[index].size.y)
                         * clickwheel_scale;
                 let max = egui::Pos2 { x: max_x, y: max_y };
 
                 let min = egui::Pos2 {
-                    x: offset.x + CLICKWHEEL_DATA[index].position.x * clickwheel_scale,
-                    y: offset.y + CLICKWHEEL_DATA[index].position.y * clickwheel_scale,
+                    x: offset_x_center + CLICKWHEEL_DATA[index].position.x * clickwheel_scale,
+                    y: offset_y_center + CLICKWHEEL_DATA[index].position.y * clickwheel_scale,
                 };
                 let size = egui::Vec2 {
                     x: CLICKWHEEL_DATA[index].size.x * clickwheel_scale,
