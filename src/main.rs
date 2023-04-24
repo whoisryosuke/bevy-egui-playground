@@ -74,6 +74,12 @@ const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
 ];
 
 #[derive(Resource)]
+struct ClickwheelState {
+    active: bool,
+    hovered: usize,
+}
+
+#[derive(Resource)]
 struct UISVGs {
     clickwheel_segment_1: RetainedImage,
     clickwheel_segment_2: RetainedImage,
@@ -89,6 +95,10 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
+        .insert_resource(ClickwheelState {
+            active: true,
+            hovered: 0,
+        })
         .insert_resource(UISVGs {
             clickwheel_segment_1: RetainedImage::from_svg_bytes_with_size(
                 "assets/clickwheel_segment_01.svg",
@@ -144,7 +154,11 @@ fn main() {
         .run();
 }
 
-fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
+fn ui_example_system(
+    mut contexts: EguiContexts,
+    svgs: Res<UISVGs>,
+    mut clickwheel_state: ResMut<ClickwheelState>,
+) {
     // Create a collection to quickly loop over all SVGs
     let svg_order = vec![
         &svgs.clickwheel_segment_1,
@@ -219,13 +233,18 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
                     y: offset_y_center + CLICKWHEEL_DATA[index].position.y * clickwheel_scale,
                 };
                 // Size of the SVG
+                let hover_scale = if clickwheel_state.hovered == index {
+                    1.1
+                } else {
+                    1.0
+                };
                 let size = egui::Vec2 {
-                    x: CLICKWHEEL_DATA[index].size.x * clickwheel_scale,
-                    y: CLICKWHEEL_DATA[index].size.y * clickwheel_scale,
+                    x: CLICKWHEEL_DATA[index].size.x * clickwheel_scale * hover_scale,
+                    y: CLICKWHEEL_DATA[index].size.y * clickwheel_scale * hover_scale,
                 };
 
                 // Absolutely position the SVG
-                ui.put(
+                let svg = ui.put(
                     // Absolute position
                     egui::Rect {
                         // Coordinates of "top left"
@@ -235,6 +254,10 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
                     },
                     egui::Image::new(svg.texture_id(ctx), size),
                 );
+                if svg.hovered() {
+                    println!("hovered over {}", index);
+                    clickwheel_state.hovered = index;
+                }
             }
         });
 }
