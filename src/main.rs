@@ -16,6 +16,7 @@ struct ClickwheelImageProps {
     size: egui::Vec2,
 }
 
+const CLICKWHEEL_HEIGHT: f32 = 756.82;
 const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
     // Segment #1
     ClickwheelImageProps {
@@ -181,21 +182,46 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
         .resizable(false)
         .show(ctx, |ui| {
             // Render UI
+
+            // Determine the size of clickwheel
+            // We want it to be 80% of the viewport size
+            let max_screen_height = ui.available_height();
+            let max_clickwheel_height = max_screen_height * 0.8;
+            // Figure out what percent we need to scale the image to make it fit
+            let clickwheel_scale = max_clickwheel_height / CLICKWHEEL_HEIGHT;
+
+            // Offset the SVG
+            // For some reason egui clips the top left corner by a chunk if we don't
+            let offset = egui::Pos2::new(20.0, 20.0);
             // Loop over all the clickwheel SVGs and render them
             for (index, svg) in svg_order.iter().enumerate() {
+                // Scale accordingly
+                let max_x = offset.x
+                    + (CLICKWHEEL_DATA[index].position.x + CLICKWHEEL_DATA[index].size.x)
+                        * clickwheel_scale;
+                let max_y = offset.y
+                    + (CLICKWHEEL_DATA[index].position.y + CLICKWHEEL_DATA[index].size.y)
+                        * clickwheel_scale;
+                let max = egui::Pos2 { x: max_x, y: max_y };
+
+                let min = egui::Pos2 {
+                    x: offset.x + CLICKWHEEL_DATA[index].position.x * clickwheel_scale,
+                    y: offset.y + CLICKWHEEL_DATA[index].position.y * clickwheel_scale,
+                };
+                let size = egui::Vec2 {
+                    x: CLICKWHEEL_DATA[index].size.x * clickwheel_scale,
+                    y: CLICKWHEEL_DATA[index].size.y * clickwheel_scale,
+                };
                 // Absolutely position the SVG
                 ui.put(
                     // Absolute position
                     egui::Rect {
                         // Coordinates of "top left"
-                        min: CLICKWHEEL_DATA[index].position,
+                        min,
                         // Coordinates of "bottom right"
-                        max: egui::Pos2 {
-                            x: CLICKWHEEL_DATA[index].position.x + CLICKWHEEL_DATA[index].size.x,
-                            y: CLICKWHEEL_DATA[index].position.y + CLICKWHEEL_DATA[index].size.y,
-                        },
+                        max,
                     },
-                    egui::Image::new(svg.texture_id(ctx), CLICKWHEEL_DATA[index].size),
+                    egui::Image::new(svg.texture_id(ctx), size),
                 );
             }
         });
