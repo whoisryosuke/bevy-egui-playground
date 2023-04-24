@@ -145,6 +145,7 @@ fn main() {
 }
 
 fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
+    // Create a collection to quickly loop over all SVGs
     let svg_order = vec![
         &svgs.clickwheel_segment_1,
         &svgs.clickwheel_segment_2,
@@ -200,12 +201,10 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
             let actual_clickwheel_width = CLICKWHEEL_WIDTH * clickwheel_scale;
             let offset_x_center = (max_screen_width / 2.0) - (actual_clickwheel_width / 2.0);
 
-            // Offset the SVG
-            // For some reason egui clips the top left corner by a chunk if we don't
-            let offset = egui::Pos2::new(20.0, 20.0);
-            // Loop over all the clickwheel SVGs and render them
+            // Loop over all the clickwheel SVGs and render each one
             for (index, svg) in svg_order.iter().enumerate() {
-                // Scale accordingly
+                // Scale and offset accordingly
+                // Coordinates of "bottom right"
                 let max_x = offset_x_center
                     + (CLICKWHEEL_DATA[index].position.x + CLICKWHEEL_DATA[index].size.x)
                         * clickwheel_scale;
@@ -214,14 +213,17 @@ fn ui_example_system(mut contexts: EguiContexts, svgs: Res<UISVGs>) {
                         * clickwheel_scale;
                 let max = egui::Pos2 { x: max_x, y: max_y };
 
+                // Coordinates of "top left"
                 let min = egui::Pos2 {
                     x: offset_x_center + CLICKWHEEL_DATA[index].position.x * clickwheel_scale,
                     y: offset_y_center + CLICKWHEEL_DATA[index].position.y * clickwheel_scale,
                 };
+                // Size of the SVG
                 let size = egui::Vec2 {
                     x: CLICKWHEEL_DATA[index].size.x * clickwheel_scale,
                     y: CLICKWHEEL_DATA[index].size.y * clickwheel_scale,
                 };
+
                 // Absolutely position the SVG
                 ui.put(
                     // Absolute position
