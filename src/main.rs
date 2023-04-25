@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
     prelude::*,
@@ -229,6 +231,8 @@ fn ui_example_system(
             // Sync with screen size
             clickwheel_state.screen_size = Some(ui.available_size());
 
+            return;
+
             // Render UI
 
             // Determine the size of clickwheel
@@ -411,20 +415,42 @@ fn spawn_clickwheel_colliders(
                 },
             ));
 
-            // Rectangle
-            commands.spawn((
-                ClickwheelObject,
-                Collider::cuboid(50.0, 100.0),
-                SpriteBundle {
-                    sprite: Sprite {
-                        color: Color::rgb(0.25, 0.25, 0.75),
-                        custom_size: Some(Vec2::new(50.0, 100.0)),
+            let center_point = Vec2::splat(0.0);
+            let num_segments = 8;
+            for index in 0..num_segments {
+                // let position_x = (PI / 2.0 - (index as f32) * PI / 180.0).cos();
+                // let position_y = (PI / 2.0 - (index as f32) * PI / 180.0).sin();
+
+                let radius = 200.0;
+                let percent_of_circle = (index as f32 / (num_segments as f32 * 2.0));
+                let position_in_circle = 360.0 * percent_of_circle;
+                let angle = position_in_circle * PI * 2.0 / 180.0;
+                let position_x = radius * angle.cos();
+                let position_y = radius * angle.sin();
+
+                println!("spawning clickwheel position {} {}", position_x, position_y);
+
+                let mut transform =
+                    Transform::from_translation(Vec3::new(position_x, position_y, 0.));
+                // let mut transform =
+                //     Transform::from_translation(Vec3::new(position_x, position_y, 0.));
+                // transform
+                //     .rotate_around(Vec3::splat(0.0), Quat::from_rotation_x(45.0 * index as f32));
+                // Rectangle
+                commands.spawn((
+                    ClickwheelObject,
+                    Collider::cuboid(50.0, 100.0),
+                    SpriteBundle {
+                        sprite: Sprite {
+                            color: Color::rgb(0.25, 0.25, 0.75),
+                            custom_size: Some(Vec2::new(50.0, 100.0)),
+                            ..default()
+                        },
+                        transform,
                         ..default()
                     },
-                    transform: Transform::from_translation(Vec3::new(-50., 0., 0.)),
-                    ..default()
-                },
-            ));
+                ));
+            }
         }
     }
 }
@@ -461,8 +487,6 @@ fn sync_mouse_collider(
                         (screen_offset.x / 2.0) - current_position.x,
                         (screen_offset.y / 2.0) - current_position.y
                     );
-                    // mouse_collider.translation.x = (screen_offset.x / 2.0) - current_position.x;
-                    // mouse_collider.translation.y = (screen_offset.y / 2.0) - current_position.y;
                     mouse_collider.translation.x = current_position.x - (screen_offset.x / 2.0);
                     mouse_collider.translation.y = current_position.y - (screen_offset.y / 2.0);
                 }
