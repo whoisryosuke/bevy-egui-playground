@@ -425,12 +425,15 @@ fn spawn_clickwheel_colliders(
                 RigidBody::Dynamic,
                 Collider::cuboid(50.0, 50.0),
                 ActiveEvents::COLLISION_EVENTS,
-                MaterialMesh2dBundle {
-                    mesh: meshes.add(shape::Circle::new(50.).into()).into(),
-                    material: materials.add(ColorMaterial::from(Color::PURPLE)),
-                    transform: Transform::from_translation(Vec3::new(-150., 0., 0.)),
-                    ..default()
-                },
+                SpatialBundle::from_transform(Transform::from_translation(Vec3::new(
+                    -150., 0., 0.,
+                ))),
+                // MaterialMesh2dBundle {
+                //     mesh: meshes.add(shape::Circle::new(50.).into()).into(),
+                //     material: materials.add(ColorMaterial::from(Color::PURPLE)),
+                //     transform: Transform::from_translation(Vec3::new(-150., 0., 0.)),
+                //     ..default()
+                // },
             ));
 
             let num_segments = 8;
@@ -446,17 +449,18 @@ fn spawn_clickwheel_colliders(
 
                 commands.spawn((
                     ClickwheelObject,
-                    ClickwheelSegment(index),
+                    ClickwheelSegment(8 - index),
                     Collider::cuboid(50.0, 100.0),
-                    SpriteBundle {
-                        sprite: Sprite {
-                            color: Color::rgb(0.25, 0.25, 0.75),
-                            custom_size: Some(Vec2::new(50.0, 100.0)),
-                            ..default()
-                        },
-                        transform,
-                        ..default()
-                    },
+                    SpatialBundle::from_transform(transform),
+                    // SpriteBundle {
+                    //     sprite: Sprite {
+                    //         color: Color::rgb(0.25, 0.25, 0.75),
+                    //         custom_size: Some(Vec2::new(50.0, 100.0)),
+                    //         ..default()
+                    //     },
+                    //     transform,
+                    //     ..default()
+                    // },
                 ));
             }
         }
@@ -539,9 +543,12 @@ fn check_clickwheel_collision_events(
 
             if let Ok(segment_component) = segment_result {
                 let ClickwheelSegment(segment_id) = segment_component;
+                let offset_id = (segment_id + 2) % 8;
 
                 println!("Collided with segment #{}", &segment_id);
-                clickwheel_state.hovered = *segment_id;
+                println!("Offset to #{}", &offset_id);
+                clickwheel_state.hovered = offset_id;
+                // clickwheel_state.hovered = *segment_id;
             }
         }
     }
