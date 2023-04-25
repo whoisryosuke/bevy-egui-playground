@@ -9,6 +9,7 @@ use bevy_egui::{
     egui::{self, epaint, Color32},
     EguiContexts, EguiPlugin,
 };
+use bevy_rapier2d::prelude::*;
 use egui_extras::RetainedImage;
 
 const CAMERA_TARGET: Vec3 = Vec3::ZERO;
@@ -78,7 +79,7 @@ const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
 struct ShowClickwheel;
 
 #[derive(Component)]
-struct ClickwheelCollider;
+struct ClickwheelMouseCollider;
 
 #[derive(Component)]
 struct ClickwheelObject;
@@ -89,6 +90,7 @@ struct ClickwheelState {
     hovered: usize,
     initial_position: Option<Vec2>,
     current_position: Option<Vec2>,
+    screen_size: Option<egui::Vec2>,
 }
 
 #[derive(Resource)]
@@ -106,6 +108,8 @@ struct UISVGs {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(EguiPlugin)
         .add_event::<ShowClickwheel>()
         .insert_resource(ClickwheelState {
@@ -113,6 +117,7 @@ fn main() {
             hovered: 0,
             initial_position: None,
             current_position: None,
+            screen_size: None,
         })
         .insert_resource(UISVGs {
             clickwheel_segment_1: RetainedImage::from_svg_bytes_with_size(
@@ -169,6 +174,7 @@ fn main() {
         .add_system(check_input)
         .add_system(spawn_clickwheel_colliders)
         .add_system(despawn_clickwheel_colliders)
+        .add_system(sync_mouse_collider)
         .run();
 }
 
@@ -177,7 +183,6 @@ fn ui_example_system(
     svgs: Res<UISVGs>,
     mut clickwheel_state: ResMut<ClickwheelState>,
 ) {
-    return;
     // Not active? Don't render UI
     if !clickwheel_state.active {
         return;
@@ -221,6 +226,9 @@ fn ui_example_system(
         .movable(false)
         .resizable(false)
         .show(ctx, |ui| {
+            // Sync with screen size
+            clickwheel_state.screen_size = Some(ui.available_size());
+
             // Render UI
 
             // Determine the size of clickwheel
@@ -390,23 +398,11 @@ fn spawn_clickwheel_colliders(
                 ClickwheelObject,
             ));
 
-            // Quad
-            commands.spawn((
-                ClickwheelObject,
-                ClickwheelCollider,
-                MaterialMesh2dBundle {
-                    mesh: meshes
-                        .add(shape::Quad::new(Vec2::new(50., 100.)).into())
-                        .into(),
-                    material: materials.add(ColorMaterial::from(Color::LIME_GREEN)),
-                    transform: Transform::from_translation(Vec3::new(50., 0., -3.)),
-                    ..default()
-                },
-            ));
-
             // Circle
             commands.spawn((
-                ClickwheelCollider,
+                ClickwheelObject,
+                ClickwheelMouseCollider,
+                Collider::cuboid(50.0, 100.0),
                 MaterialMesh2dBundle {
                     mesh: meshes.add(shape::Circle::new(50.).into()).into(),
                     material: materials.add(ColorMaterial::from(Color::PURPLE)),
@@ -417,7 +413,8 @@ fn spawn_clickwheel_colliders(
 
             // Rectangle
             commands.spawn((
-                ClickwheelCollider,
+                ClickwheelObject,
+                Collider::cuboid(50.0, 100.0),
                 SpriteBundle {
                     sprite: Sprite {
                         color: Color::rgb(0.25, 0.25, 0.75),
@@ -442,6 +439,34 @@ fn despawn_clickwheel_colliders(
         println!("despawning clickwheel collider");
         for collider in collider_collection {
             commands.entity(collider).despawn_recursive();
+        }
+    }
+}
+
+fn sync_mouse_collider(
+    clickwheel_state: Res<ClickwheelState>,
+    mut mouse_colliders: Query<&mut Transform, With<ClickwheelMouseCollider>>,
+) {
+    if clickwheel_state.active {
+        for mut mouse_collider in mouse_colliders.iter_mut() {
+            if let Some(current_position) = clickwheel_state.current_position {
+                if let Some(screen_offset) = clickwheel_state.screen_size {
+                    println!("screen: {} {}", screen_offset.x, screen_offset.y);
+                    println!(
+                        "current_position: {} {}",
+                        current_position.x, current_position.y
+                    );
+                    println!(
+                        "calc: {} {}",
+                        (screen_offset.x / 2.0) - current_position.x,
+                        (screen_offset.y / 2.0) - current_position.y
+                    );
+                    // mouse_collider.translation.x = (screen_offset.x / 2.0) - current_position.x;
+                    // mouse_collider.translation.y = (screen_offset.y / 2.0) - current_position.y;
+                    mouse_collider.translation.x = current_position.x - (screen_offset.x / 2.0);
+                    mouse_collider.translation.y = current_position.y - (screen_offset.y / 2.0);
+                }
+            }
         }
     }
 }

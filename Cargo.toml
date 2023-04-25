@@ -9,3 +9,4 @@ edition = "2021"
 bevy = "0.10.0"
 bevy_egui = "0.20.1"
 egui_extras = { version = "0.21.0", features = ["svg"] }
+bevy_rapier2d = {version= "0.21.0", features = ["simd-stable", "debug-render-2d" ]}
