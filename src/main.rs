@@ -415,6 +415,7 @@ fn spawn_clickwheel_colliders(
             commands.spawn((
                 ClickwheelObject,
                 ClickwheelMouseCollider,
+                RigidBody::Dynamic,
                 Collider::cuboid(50.0, 100.0),
                 ActiveEvents::COLLISION_EVENTS,
                 MaterialMesh2dBundle {
