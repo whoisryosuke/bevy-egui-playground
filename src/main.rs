@@ -177,6 +177,7 @@ fn main() {
         .add_system(spawn_clickwheel_colliders)
         .add_system(despawn_clickwheel_colliders)
         .add_system(sync_mouse_collider)
+        .add_system(handle_collision_events)
         .run();
 }
 
@@ -337,6 +338,10 @@ fn setup_system(
     commands.spawn((
         Camera3dBundle {
             transform: camera_transform,
+            camera: Camera {
+                order: 1,
+                ..Default::default()
+            },
             ..Default::default()
         },
         // UI config is a separate component
@@ -393,6 +398,10 @@ fn spawn_clickwheel_colliders(
             // Spawn a 2D camera with a clear background for UI
             commands.spawn((
                 Camera2dBundle {
+                    camera: Camera {
+                        order: 4,
+                        ..Default::default()
+                    },
                     camera_2d: Camera2d {
                         clear_color: ClearColorConfig::None,
                     },
@@ -407,6 +416,7 @@ fn spawn_clickwheel_colliders(
                 ClickwheelObject,
                 ClickwheelMouseCollider,
                 Collider::cuboid(50.0, 100.0),
+                ActiveEvents::COLLISION_EVENTS,
                 MaterialMesh2dBundle {
                     mesh: meshes.add(shape::Circle::new(50.).into()).into(),
                     material: materials.add(ColorMaterial::from(Color::PURPLE)),
@@ -427,8 +437,6 @@ fn spawn_clickwheel_colliders(
                 let angle = position_in_circle * PI * 2.0 / 180.0;
                 let position_x = radius * angle.cos();
                 let position_y = radius * angle.sin();
-
-                println!("spawning clickwheel position {} {}", position_x, position_y);
 
                 let mut transform =
                     Transform::from_translation(Vec3::new(position_x, position_y, 0.));
@@ -477,20 +485,30 @@ fn sync_mouse_collider(
         for mut mouse_collider in mouse_colliders.iter_mut() {
             if let Some(current_position) = clickwheel_state.current_position {
                 if let Some(screen_offset) = clickwheel_state.screen_size {
-                    println!("screen: {} {}", screen_offset.x, screen_offset.y);
-                    println!(
-                        "current_position: {} {}",
-                        current_position.x, current_position.y
-                    );
-                    println!(
-                        "calc: {} {}",
-                        (screen_offset.x / 2.0) - current_position.x,
-                        (screen_offset.y / 2.0) - current_position.y
-                    );
                     mouse_collider.translation.x = current_position.x - (screen_offset.x / 2.0);
                     mouse_collider.translation.y = current_position.y - (screen_offset.y / 2.0);
                 }
             }
+        }
+    }
+}
+
+fn handle_collision_events(
+    mut commands: Commands,
+    mut collision_events: EventReader<CollisionEvent>,
+    mut contact_force_events: EventReader<ContactForceEvent>,
+) {
+    // Check for collisions
+    for collision_event in collision_events.iter() {
+        match collision_event {
+            CollisionEvent::Started(first_entity, second_entity, _) => {
+                println!(
+                    "{} collided with {}",
+                    first_entity.index(),
+                    second_entity.index()
+                );
+            }
+            CollisionEvent::Stopped(first_entity, second_entity, event) => {}
         }
     }
 }
