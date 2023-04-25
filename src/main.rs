@@ -78,14 +78,21 @@ const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
     },
 ];
 
+// Events
 struct ShowClickwheel;
+struct ClickwheelCollisionEvent(Entity);
 
+// Components
 #[derive(Component)]
 struct ClickwheelMouseCollider;
 
 #[derive(Component)]
 struct ClickwheelObject;
 
+#[derive(Component)]
+struct ClickwheelSegment(usize);
+
+// Resources / state
 #[derive(Resource)]
 struct ClickwheelState {
     active: bool,
@@ -114,6 +121,7 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         .add_plugin(EguiPlugin)
         .add_event::<ShowClickwheel>()
+        .add_event::<ClickwheelCollisionEvent>()
         .insert_resource(ClickwheelState {
             active: false,
             hovered: 0,
@@ -178,6 +186,7 @@ fn main() {
         .add_system(despawn_clickwheel_colliders)
         .add_system(sync_mouse_collider)
         .add_system(handle_collision_events)
+        .add_system(check_clickwheel_collision_events)
         .run();
 }
 
@@ -231,8 +240,6 @@ fn ui_example_system(
         .show(ctx, |ui| {
             // Sync with screen size
             clickwheel_state.screen_size = Some(ui.available_size());
-
-            return;
 
             // Render UI
 
@@ -293,7 +300,7 @@ fn ui_example_system(
                 );
                 if svg.hovered() {
                     // println!("hovered over {}", index);
-                    clickwheel_state.hovered = index;
+                    // clickwheel_state.hovered = index;
                 }
             }
         });
@@ -416,7 +423,7 @@ fn spawn_clickwheel_colliders(
                 ClickwheelObject,
                 ClickwheelMouseCollider,
                 RigidBody::Dynamic,
-                Collider::cuboid(50.0, 100.0),
+                Collider::cuboid(50.0, 50.0),
                 ActiveEvents::COLLISION_EVENTS,
                 MaterialMesh2dBundle {
                     mesh: meshes.add(shape::Circle::new(50.).into()).into(),
@@ -426,12 +433,8 @@ fn spawn_clickwheel_colliders(
                 },
             ));
 
-            let center_point = Vec2::splat(0.0);
             let num_segments = 8;
             for index in 0..num_segments {
-                // let position_x = (PI / 2.0 - (index as f32) * PI / 180.0).cos();
-                // let position_y = (PI / 2.0 - (index as f32) * PI / 180.0).sin();
-
                 let radius = 200.0;
                 let percent_of_circle = (index as f32 / (num_segments as f32 * 2.0));
                 let position_in_circle = 360.0 * percent_of_circle;
@@ -439,15 +442,11 @@ fn spawn_clickwheel_colliders(
                 let position_x = radius * angle.cos();
                 let position_y = radius * angle.sin();
 
-                let mut transform =
-                    Transform::from_translation(Vec3::new(position_x, position_y, 0.));
-                // let mut transform =
-                //     Transform::from_translation(Vec3::new(position_x, position_y, 0.));
-                // transform
-                //     .rotate_around(Vec3::splat(0.0), Quat::from_rotation_x(45.0 * index as f32));
-                // Rectangle
+                let transform = Transform::from_translation(Vec3::new(position_x, position_y, 0.));
+
                 commands.spawn((
                     ClickwheelObject,
+                    ClickwheelSegment(index),
                     Collider::cuboid(50.0, 100.0),
                     SpriteBundle {
                         sprite: Sprite {
@@ -495,21 +494,55 @@ fn sync_mouse_collider(
 }
 
 fn handle_collision_events(
-    mut commands: Commands,
+    mouse_collider_query: Query<Entity, With<ClickwheelMouseCollider>>,
     mut collision_events: EventReader<CollisionEvent>,
-    mut contact_force_events: EventReader<ContactForceEvent>,
+    mut clickwheel_events: EventWriter<ClickwheelCollisionEvent>,
 ) {
     // Check for collisions
     for collision_event in collision_events.iter() {
         match collision_event {
             CollisionEvent::Started(first_entity, second_entity, _) => {
-                println!(
-                    "{} collided with {}",
-                    first_entity.index(),
-                    second_entity.index()
-                );
+                // println!(
+                //     "{} collided with {}",
+                //     first_entity.index(),
+                //     second_entity.index()
+                // );
+
+                let mouse_entity_result = mouse_collider_query.get_single();
+
+                if let Ok(mouse_entity) = mouse_entity_result {
+                    let mouse_id = mouse_entity.index();
+                    // Check which is the mouse and which is segment
+                    if first_entity.index() != mouse_id {
+                        clickwheel_events.send(ClickwheelCollisionEvent(*first_entity));
+                    }
+                    if second_entity.index() != mouse_id {
+                        clickwheel_events.send(ClickwheelCollisionEvent(*second_entity));
+                    }
+                }
             }
             CollisionEvent::Stopped(first_entity, second_entity, event) => {}
+        }
+    }
+}
+
+fn check_clickwheel_collision_events(
+    clickwheel_segments: Query<&ClickwheelSegment, With<ClickwheelObject>>,
+    mut clickwheel_events: EventReader<ClickwheelCollisionEvent>,
+    mut clickwheel_state: ResMut<ClickwheelState>,
+) {
+    if !clickwheel_events.is_empty() {
+        for clickwheel_event in clickwheel_events.iter() {
+            let ClickwheelCollisionEvent(segment_entity) = clickwheel_event;
+
+            let segment_result = clickwheel_segments.get(*segment_entity);
+
+            if let Ok(segment_component) = segment_result {
+                let ClickwheelSegment(segment_id) = segment_component;
+
+                println!("Collided with segment #{}", &segment_id);
+                clickwheel_state.hovered = *segment_id;
+            }
         }
     }
 }
