@@ -182,8 +182,8 @@ fn main() {
         .add_startup_system(setup_system)
         .add_system(ui_example_system)
         .add_system(check_input)
-        .add_system(spawn_clickwheel_colliders)
-        .add_system(despawn_clickwheel_colliders)
+        // .add_system(spawn_clickwheel_colliders)
+        // .add_system(despawn_clickwheel_colliders)
         .add_system(sync_mouse_collider)
         .add_system(handle_collision_events)
         .add_system(check_clickwheel_collision_events)
@@ -481,16 +481,106 @@ fn despawn_clickwheel_colliders(
     }
 }
 
-fn sync_mouse_collider(
-    clickwheel_state: Res<ClickwheelState>,
-    mut mouse_colliders: Query<&mut Transform, With<ClickwheelMouseCollider>>,
-) {
+fn sync_mouse_collider(mut clickwheel_state: ResMut<ClickwheelState>) {
     if clickwheel_state.active {
-        for mut mouse_collider in mouse_colliders.iter_mut() {
-            if let Some(current_position) = clickwheel_state.current_position {
-                if let Some(screen_offset) = clickwheel_state.screen_size {
-                    mouse_collider.translation.x = current_position.x - (screen_offset.x / 2.0);
-                    mouse_collider.translation.y = current_position.y - (screen_offset.y / 2.0);
+        if let Some(current_position) = clickwheel_state.current_position {
+            if let Some(screen_offset) = clickwheel_state.screen_size {
+                let mouse_x = current_position.x - (screen_offset.x / 2.0);
+                let mouse_y = current_position.y - (screen_offset.y / 2.0);
+
+                println!("Mouse angle?: {} {}", mouse_x.atan(), mouse_y.atan());
+
+                let x_angle = mouse_x.atan();
+                let y_angle = mouse_y.atan();
+                let check_point = Vec2::new(x_angle, y_angle);
+                let middle_ratio = x_angle.abs() / y_angle.abs();
+                println!("middle ratio: {}", middle_ratio);
+
+                // TOP LEFT
+                if x_angle < 0.0 && y_angle > 0.0 {
+                    println!("top left quad");
+
+                    // Split into another triangle and find out which point is in
+                    // We know the points of triangle based on quadrant position.
+                    // You can visualize this on a point graph by splitting a quadrant diagonally.
+                    // let triangle_point1 = Vec2::new(0.0, 0.0);
+                    // let triangle_point2 = Vec2::new(0.0, 1.5);
+                    // let triangle_point3 = Vec2::new(-1.5, 1.5);
+                    // let triangle_point1 = Vec2::new(0.0, 0.0);
+                    // let triangle_point2 = Vec2::new(-1.5, 0.0);
+                    // let triangle_point3 = Vec2::new(-1.5, 1.5);
+
+                    // let is_in_triangle = point_in_triangle(
+                    //     check_point,
+                    //     triangle_point3,
+                    //     triangle_point2,
+                    //     triangle_point1,
+                    // );
+
+                    // if is_in_triangle {
+                    //     println!("SEGMENT 0")
+                    // } else {
+                    //     println!("SEGMENT 8")
+                    // }
+
+                    // Smarter? We know the middle line is when X/Y=1 (e.g. 1.5, 1.5)
+                    // And anything above is a fraction (less than 1 - e.g. 1.5, 0).
+                    // Anything below is a multiple (more than 1 -- e.g. 0, 1.5).
+                    if middle_ratio < 1.0 {
+                        println!("SEGMENT 0");
+                        clickwheel_state.hovered = 0;
+                        return;
+                    }
+                    if middle_ratio > 1.0 {
+                        println!("SEGMENT 7");
+                        clickwheel_state.hovered = 7;
+                        return;
+                    }
+                }
+
+                // BOTTOM LEFT
+                if x_angle < 0.0 && y_angle < 0.0 {
+                    println!("bottom left quad");
+                    if middle_ratio < 1.0 {
+                        println!("SEGMENT 5");
+                        clickwheel_state.hovered = 5;
+                        return;
+                    }
+                    if middle_ratio > 1.0 {
+                        println!("SEGMENT 6");
+                        clickwheel_state.hovered = 6;
+                        return;
+                    }
+                }
+
+                // TOP RIGHT
+                if x_angle > 0.0 && y_angle > 0.0 {
+                    println!("top right quad");
+                    if middle_ratio < 1.0 {
+                        println!("SEGMENT 1");
+                        clickwheel_state.hovered = 1;
+                        return;
+                    }
+                    if middle_ratio > 1.0 {
+                        println!("SEGMENT 2");
+                        clickwheel_state.hovered = 2;
+                        return;
+                    }
+                }
+
+                // BOTTOM RIGHT
+                if x_angle > 0.0 && y_angle < 0.0 {
+                    println!("bottom right quad");
+                    if middle_ratio < 1.0 {
+                        println!("SEGMENT 4");
+                        clickwheel_state.hovered = 4;
+                        return;
+                    }
+                    if middle_ratio > 1.0 {
+                        println!("SEGMENT 3");
+                        clickwheel_state.hovered = 3;
+                        return;
+                    }
                 }
             }
         }
@@ -545,11 +635,26 @@ fn check_clickwheel_collision_events(
                 let ClickwheelSegment(segment_id) = segment_component;
                 let offset_id = (segment_id + 2) % 8;
 
-                println!("Collided with segment #{}", &segment_id);
-                println!("Offset to #{}", &offset_id);
+                // println!("Collided with segment #{}", &segment_id);
+                // println!("Offset to #{}", &offset_id);
                 clickwheel_state.hovered = offset_id;
                 // clickwheel_state.hovered = *segment_id;
             }
         }
     }
+}
+
+fn sign(p1: Vec2, p2: Vec2, p3: Vec2) -> f32 {
+    return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
+}
+
+fn point_in_triangle(pt: Vec2, v1: Vec2, v2: Vec2, v3: Vec2) -> bool {
+    let d1 = sign(pt, v1, v2);
+    let d2 = sign(pt, v2, v3);
+    let d3 = sign(pt, v3, v1);
+
+    let has_neg = (d1 < 0.0) || (d2 < 0.0) || (d3 < 0.0);
+    let has_pos = (d1 > 0.0) || (d2 > 0.0) || (d3 > 0.0);
+
+    return !(has_neg && has_pos);
 }
