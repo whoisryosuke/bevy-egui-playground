@@ -2,6 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
+    math::Vec2Swizzles,
     prelude::*,
     render::{camera::Projection, mesh::Indices},
     sprite::MaterialMesh2dBundle,
@@ -23,6 +24,8 @@ struct ClickwheelImageProps {
 
 const CLICKWHEEL_WIDTH: f32 = 757.0;
 const CLICKWHEEL_HEIGHT: f32 = 756.82;
+const CLICKWHEEL_DEADZONE: f32 = 100.0;
+const CLICKWHEEL_NUM_SEGMENTS: usize = 8;
 const CLICKWHEEL_DATA: [ClickwheelImageProps; 8] = [
     // Segment #1
     ClickwheelImageProps {
@@ -490,6 +493,47 @@ fn sync_mouse_collider(mut clickwheel_state: ResMut<ClickwheelState>) {
 
                 println!("Mouse angle?: {} {}", mouse_x.atan(), mouse_y.atan());
 
+                // Get the distance.
+                // We have a "deadzone" in middle, so ignore input if it's within that distance.
+                let center = Vec2::splat(0.0);
+                let distance = (mouse_x * mouse_x + mouse_y * mouse_y).sqrt();
+
+                println!("Distance from center: {}", distance);
+
+                if distance < CLICKWHEEL_DEADZONE {
+                    return;
+                }
+
+                // Get the "polar coordinates" of the mouse using an arc tangent
+                // This separates screen into 4 quadrants and returns mouse position relative to those.
+                // This gets a number that goes from -3 to 3 and represents the "radians" from center.
+                // The "radians" starts from left-middle and goes around clockwise.
+                let radians = mouse_y.atan2(mouse_x);
+                println!("Tan2 Angle {}", radians);
+
+                // Alternate, probably less accurate way.
+                // let angle = 360.0 / (6.0 / (angle_calc + 3.0));
+
+                // Accurate "math" way
+                // We add 180 because it ranges from -180 to 180 and I prefer 0-360.
+                let angle = 180.0 + radians * (180.0 / PI);
+                println!("Tan2 Angle {}", angle);
+
+                let angle_per_segment = 360.0 / (CLICKWHEEL_NUM_SEGMENTS as f32);
+
+                // Loop through each "segment" of screen and check if the mouse is within it or not
+                // We return early to make this more efficient, but there's more optimized ways to map this.
+                for index in 0..CLICKWHEEL_NUM_SEGMENTS {
+                    let current_segment_angle = index as f32 * angle_per_segment;
+                    let next_segment_angle = (index + 1) as f32 * angle_per_segment;
+                    if angle > current_segment_angle && angle < next_segment_angle {
+                        println!("OPTIMIZED SEGMENT #{}", index);
+                        clickwheel_state.hovered = index;
+                        return;
+                    }
+                }
+
+                // Another way of calculating - similar method with polar coordinates.
                 let x_angle = mouse_x.atan();
                 let y_angle = mouse_y.atan();
                 let check_point = Vec2::new(x_angle, y_angle);
